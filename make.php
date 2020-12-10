@@ -14,15 +14,34 @@
     $attachment    = get_post( $attachment_id );
     $wp_upload_dir = wp_upload_dir();
     $path          = wp_get_original_image_path( $attachment->ID );
+    $height        = 290;
+    $width         = 516;
 
-    $dominantColor = ColorThief::getColor( $path );
+    //$dominantColor = ColorThief::getColor( $path );
 
-    var_dump($dominantColor);
+    $createimg = imageCreateTrueColor( $width, $height * 2 );
+    // $color = imageColorAllocate($createimg, $dominantColor[0], $dominantColor[1],$dominantColor[2]);
+    $img         = imagecreatefromjpeg( $path );
+    $w           = imagesx( $img );
+    $h           = imagesy( $img );
+    
+    $imgRatio    = $w / $h;
+    $ratio       = $width / $height;
+    
+    if ( $ratio >= $imgRatio ) {
+       $newHeight = $height;
+       $newWidth = $w / ( $h / $height );
+    } else {
+       $newWidth   = $width;
+       $newHeight  = $h / ( $w / $width );
+    }
 
-    $createimg = imageCreateTrueColor(300, 318 );
-    $color = imageColorAllocate($createimg, $dominantColor[0], $dominantColor[1],$dominantColor[2]);
-    $logo=imagecreatefromjpeg($path );
-    $logo2=imagecreatefromjpeg($path );
+    $thumb = imagecreatetruecolor( $width, $height );
+
+    imagecopyresampled( $thumb, $img, 0 - ( $newWidth - $width ) / 2, 0 - ( $newHeight - $height ) / 2, 0, 0, $newWidth, $newHeight, $w, $h );
+
+    $logo  = imagecreatefromjpeg( $path );
+    $logo2 = imagecreatefromjpeg( $path );
     imageflip($logo2, IMG_FLIP_VERTICAL);
 
     imagecopyresampled($createimg,$logo,0,0,0,0,300,156, 1280, 720);
@@ -41,7 +60,7 @@
 
     imagecopyresampled($createimg, $output, 0, 86, 0, 0, 300, 100, 300, 100);
 
-    imagejpeg( $createimg, $wp_upload_dir['path'] . '/' . $attachment->post_name . '_dzen.jpg', 100 );
+    imagejpeg( $thumb, $wp_upload_dir['path'] . '/' . $attachment->post_name . '_dzen.jpg', 100 );
 
     imagedestroy( $createimg );
 
