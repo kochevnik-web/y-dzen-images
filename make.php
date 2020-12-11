@@ -37,12 +37,19 @@
     }
 
     $thumb = imagecreatetruecolor( $width, $height );
-
     imagecopyresampled( $thumb, $img, 0 - ( $newWidth - $width ) / 2, 0 - ( $newHeight - $height ) / 2, 0, 0, $newWidth, $newHeight, $w, $h );
 
-    $logo  = imagecreatefromjpeg( $path );
-    $logo2 = imagecreatefromjpeg( $path );
-    imageflip($logo2, IMG_FLIP_VERTICAL);
+    $flip = imagecreatetruecolor( $width, $height );
+    imagecopyresampled( $flip, $thumb, 0, 0, 0, 0, $width, $height, $width, $height );
+    imageflip( $flip, IMG_FLIP_VERTICAL );
+
+    $blurCount = 40;
+    for ( $i = 0; $i < $blurCount; $i++ ) {
+        $replaceImg = imagecreatetruecolor( $width, 1 );
+        imagecopyresampled( $replaceImg, $thumb, 0, 0, 0, $height - $blurCount + $i, $width, $height, $width, 1 );
+        imagefilter( $replaceImg, IMG_FILTER_GAUSSIAN_BLUR, $i * $i * 10 * 999 );
+        imagecopyresampled( $thumb, $replaceImg, 0, $height - $blurCount + $i, 0, 0, $width, 1, $width, 1 );
+    }
 
     imagecopyresampled($createimg,$logo,0,0,0,0,300,156, 1280, 720);
     imagecopyresampled($createimg,$logo2,0,156,0,0,300,156, 1280, 360);
