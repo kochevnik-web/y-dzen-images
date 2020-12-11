@@ -17,8 +17,6 @@
     $height        = 290;
     $width         = 516;
 
-    //$dominantColor = ColorThief::getColor( $path );
-
     $createimg = imageCreateTrueColor( $width, $height * 2 );
     // $color = imageColorAllocate($createimg, $dominantColor[0], $dominantColor[1],$dominantColor[2]);
     $img         = imagecreatefromjpeg( $path );
@@ -43,13 +41,63 @@
     imagecopyresampled( $flip, $thumb, 0, 0, 0, 0, $width, $height, $width, $height );
     imageflip( $flip, IMG_FLIP_VERTICAL );
 
-    $blurCount = 40;
-    for ( $i = 0; $i < $blurCount; $i++ ) {
-        $replaceImg = imagecreatetruecolor( $width, 1 );
-        imagecopyresampled( $replaceImg, $thumb, 0, 0, 0, $height - $blurCount + $i, $width, $height, $width, 1 );
-        imagefilter( $replaceImg, IMG_FILTER_GAUSSIAN_BLUR, $i * $i * 10 * 999 );
-        imagecopyresampled( $thumb, $replaceImg, 0, $height - $blurCount + $i, 0, 0, $width, 1, $width, 1 );
+    $blurCount = 15;
+    // for ( $i = 0; $i < $blurCount; $i++ ) {
+    //     $replaceImg = imagecreatetruecolor( $width, 1 );
+    //     imagecopyresampled( $replaceImg, $thumb, 0, 0, 0, $height - $blurCount + $i, $width, $height, $width, 1 );
+    //     for( $j = 0; $j <= $i * 3; $j++ ) {
+    //         imagefilter( $replaceImg, IMG_FILTER_GAUSSIAN_BLUR, 999 );
+    //     }
+    //     imagecopyresampled( $thumb, $replaceImg, 0, $height - $blurCount + $i, 0, 0, $width, 1, $width, 1 );
+    // }
+
+    function imagemask($image, $mask){
+        // получаем формат картинки
+        $arrImg = explode(".", $image);
+        $format = (end($arrImg) == 'jpg') ? 'jpeg': end($arrImg);
+        $imgFunc = "imagecreatefrom" . $format; //определение функции для расширения файла
+        // получаем формат маски
+        $arrMask = explode(".", $mask);
+        $format = (end($arrMask) == 'jpg') ? 'jpeg': end($arrMask);
+        $maskFunc = "imagecreatefrom" . $format; //определение функции для расширения файла
+         
+        $image = $imgFunc($image); // загружаем картинку
+        $mask = $maskFunc($mask); // загружаем маску
+        $width =  imagesx($image); // определяем ширину картинки
+        $height = imagesy($image); // определяем высоту картинки
+        $img = imagecreatetruecolor($width, $height); // создаем холст для будущей картинки
+        $transColor = imagecolorallocate($img, 0, 0, 0); // определяем прозрачный цвет для картинки. Черный
+        imagecolortransparent($img,$transColor); // задаем прозрачность для картинки
+        // перебираем картинку по пикселю
+        for($posX = 0; $posX < $width; $posX++){ 
+            for($posY = 0; $posY < $height; $posY++){
+                $colorIndex = imagecolorat($image, $posX, $posY); // получаем индекс цвета пикселя в координате $posX, $posY для картинки
+                $colorImage = imagecolorsforindex($image, $colorIndex); // получаем цвет по его индексу в формате RGB
+                $colorIndex = imagecolorat($mask, $posX, $posY); // получаем индекс цвета пикселя в координате $posX, $posY для маски
+                $maskColor = imagecolorsforindex($mask, $colorIndex); // получаем цвет по его индексу в формате RGB
+                // если в точке $posX, $posY цвет маски не белый, то наносим на холст пиксель с нужным цветом
+                if (!($maskColor['red'] == 255 && $maskColor['green'] == 255 && $maskColor['blue'] == 255)){
+                    $colorIndex = imagecolorallocate($img, $colorImage['red'], $colorImage['green'], $colorImage['blue']); // получаем цвет для пикселя
+                    imagesetpixel($img, $posX, $posY, $colorIndex); // рисуем пиксель
+                } 
+            }
+        }
+        return $img; // вернем изображение
     }
+
+    $flip = imagescale($flip , $width/40, $height/40);
+    imagefilter( $flip, IMG_FILTER_GAUSSIAN_BLUR );
+    $flip = imagescale($flip , $width, $height);
+    for ( $i = 0; $i < 50; $i++ ) {
+        imagefilter( $flip, IMG_FILTER_GAUSSIAN_BLUR );
+    }
+
+    $final = imagecreatetruecolor( $width, $height * 2 );
+    imagecopyresampled( $final, $thumb, 0, 0, 0, 0, $width, $height, $width, $height );
+    imagecopyresampled( $final, $flip, 0, $height, 0, 0, $width, $height, $width, $height );
+
+    $dominantColor = ColorThief::getColor( $flip );
+    var_dump($dominantColor);
 
     imagecopyresampled($createimg,$logo,0,0,0,0,300,156, 1280, 720);
     imagecopyresampled($createimg,$logo2,0,156,0,0,300,156, 1280, 360);
@@ -65,9 +113,9 @@
         imageline($output, 0, 100 - $y, 300, 100 - $y, $new_color);
     }
 
-    imagecopyresampled($createimg, $output, 0, 86, 0, 0, 300, 100, 300, 100);
+    imagecopyresampled($final, $output, 0, 86, 0, 0, $width, 100, $width, 100);
 
-    imagejpeg( $thumb, $wp_upload_dir['path'] . '/' . $attachment->post_name . '_dzen.jpg', 100 );
+    imagejpeg( $final, $wp_upload_dir['path'] . '/' . $attachment->post_name . '_dzen.jpg', 100 );
 
     imagedestroy( $createimg );
 
